@@ -6,7 +6,7 @@
   "architecture": {
     "64bit": {
       "url": "https://github.com/B-Divyesh/sf-batch-artifact-export/releases/download/v0.1.0/batch-artifact-export-windows-x86_64.zip",
-      "hash": "__WINDOWS_SHA256__"
+      "hash": "95be721528bbd6105ca1107e0161915c5b7dd1baf2feac0dd40c9d6bd2ba15bc"
     }
   },
   "bin": "batch-artifact-export.exe",

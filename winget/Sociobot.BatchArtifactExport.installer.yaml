@@ -4,7 +4,7 @@ InstallerType: zip
 Installers:
   - Architecture: x64
     InstallerUrl: https://github.com/B-Divyesh/sf-batch-artifact-export/releases/download/v0.1.0/batch-artifact-export-windows-x86_64.zip
-    InstallerSha256: __WINDOWS_SHA256__
+    InstallerSha256: 95BE721528BBD6105CA1107E0161915C5B7DD1BAF2FEAC0DD40C9D6BD2BA15BC
     NestedInstallerType: portable
     NestedInstallerFiles:
       - RelativeFilePath: batch-artifact-export.exe

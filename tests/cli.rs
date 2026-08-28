@@ -103,3 +103,54 @@ converter = "copy"
         .unwrap()
         .contains("declared failure"));
 }
+
+#[cfg(unix)]
+#[test]
+fn pilot_exports_one_hundred_declared_artifacts() {
+    use std::fmt::Write as _;
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let converter = dir.path().join("copy.sh");
+    fs::write(&converter, "#!/bin/sh\ncp \"$1\" \"$2\"\n").unwrap();
+    let mut permissions = fs::metadata(&converter).unwrap().permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&converter, permissions).unwrap();
+
+    let mut manifest = format!(
+        "version = 1\noutput_dir = \"exports\"\nreport = \"exports/report.json\"\n[[converters]]\nname = \"copy\"\ncommand = \"{}\"\nargs = [\"{{input}}\", \"{{output}}\"]\noutput_extension = \"pdf\"\nlicense = \"MIT\"\nhomepage = \"https://example.test\"\n",
+        converter.display()
+    );
+    for index in 0..100 {
+        fs::write(
+            dir.path().join(format!("source-{index}.txt")),
+            format!("artifact {index}"),
+        )
+        .unwrap();
+        writeln!(
+            manifest,
+            "[[artifacts]]\nsource = \"source-{index}.txt\"\nconverter = \"copy\""
+        )
+        .unwrap();
+    }
+    fs::write(dir.path().join("batch-export.toml"), manifest).unwrap();
+    Command::cargo_bin("batch-artifact-export")
+        .unwrap()
+        .current_dir(dir.path())
+        .args(["run", "--sandbox", "off", "--jobs", "8", "--json"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("\"succeeded\":100"));
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(dir.path().join("exports/report.json")).unwrap()).unwrap();
+    assert_eq!(report["succeeded"], 100);
+    assert_eq!(report["failed"], 0);
+    assert_eq!(report["artifacts"].as_array().unwrap().len(), 100);
+    assert_eq!(
+        fs::read_to_string(dir.path().join("source-42.txt")).unwrap(),
+        "artifact 42"
+    );
+    assert_eq!(
+        fs::read_to_string(dir.path().join("exports/source-42.pdf")).unwrap(),
+        "artifact 42"
+    );
+}

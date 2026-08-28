@@ -1,6 +1,6 @@
 import { validateManifest } from "./validator.mjs";
 
-const RELEASE_MANIFEST = "https://github.com/B-Divyesh/sf-batch-artifact-export/releases/latest/download/latest.json";
+const RELEASE_API = "https://api.github.com/repos/B-Divyesh/sf-batch-artifact-export/releases/latest";
 const RELEASE_PAGE = "https://github.com/B-Divyesh/sf-batch-artifact-export/releases/latest";
 
 function platformKey() {
@@ -16,15 +16,17 @@ async function loadRelease() {
   const state = document.querySelector("#release-state");
   const [key, platform] = platformKey();
   try {
-    const response = await fetch(RELEASE_MANIFEST, { cache: "no-store" });
-    if (!response.ok) throw new Error(`release index returned ${response.status}`);
-    const release = await response.json();
-    const asset = release.assets?.[key];
-    if (!asset?.url) throw new Error(`no ${key} asset in release index`);
-    button.href = asset.url;
+    const metadataResponse = await fetch(RELEASE_API, { cache: "no-store" });
+    if (!metadataResponse.ok) throw new Error(`release API returned ${metadataResponse.status}`);
+    const metadata = await metadataResponse.json();
+    if (!metadata.assets?.some((asset) => asset.name === "latest.json")) throw new Error("latest.json is absent from the current release");
+    const assetName = { "windows-x86_64": "batch-artifact-export-windows-x86_64.zip", "macos-universal": "batch-artifact-export-macos-universal.tar.gz", "linux-x86_64": "batch-artifact-export-linux-x86_64.tar.gz" }[key];
+    const asset = metadata.assets.find((item) => item.name === assetName);
+    if (!asset?.browser_download_url) throw new Error(`no ${key} asset in release index`);
+    button.href = asset.browser_download_url;
     label.textContent = `Download for ${platform}`;
     state.className = "release-state ready";
-    state.innerHTML = `<span aria-hidden="true"></span>${release.version} · SHA-256 published`;
+    state.innerHTML = `<span aria-hidden="true"></span>${metadata.tag_name} · SHA-256 published`;
   } catch {
     button.href = RELEASE_PAGE;
     label.textContent = `View ${platform} releases`;

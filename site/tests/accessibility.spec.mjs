@@ -2,12 +2,16 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 test("landing page has no serious accessibility violations", async ({ page }) => {
+  const errors = [];
+  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
   await page.goto("/");
   await expect(page).toHaveTitle(/Batch Artifact Export/);
   await expect(page.locator("h1")).toHaveCount(1);
   await expect(page.locator("main")).toHaveCount(1);
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((item) => ["serious", "critical"].includes(item.impact))).toEqual([]);
+  await expect(page.locator("#release-state")).not.toHaveClass(/loading/);
+  expect(errors).toEqual([]);
 });
 
 test("manifest inspection covers valid, error, and empty states", async ({ page }) => {
