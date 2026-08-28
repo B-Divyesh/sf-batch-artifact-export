@@ -1,0 +1,19 @@
+{
+  "name": "batch-artifact-export-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "test": "cargo test && node --test site/tests/*.test.mjs && playwright test",
+    "build": "cargo build --release && npm run build:site",
+    "build:site": "node scripts/build-site.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.58.2"
+  }
+}
