@@ -20,6 +20,21 @@ irm https://batch-artifact-export.sociobot.in/install.ps1 | iex
 
 The installers select the current platform asset and verify its SHA-256 checksum before placing `batch-artifact-export` on `PATH`. Manual downloads and package-manager instructions are at <https://batch-artifact-export.sociobot.in>.
 
+Homebrew:
+
+```sh
+brew install B-Divyesh/batch-artifact-export/batch-artifact-export
+```
+
+Scoop:
+
+```powershell
+scoop bucket add batch-artifact-export https://github.com/B-Divyesh/sf-batch-artifact-export
+scoop install batch-artifact-export
+```
+
+GitHub Releases also provides `.deb`, `.rpm`, an unsigned universal macOS `.pkg`, separate macOS architecture archives, and a portable Windows zip. Until signing certificates are configured, macOS users may need Control-click → Open and Windows may show a SmartScreen notice. Verify `SHA256SUMS` before bypassing either warning. The `winget/` directory contains manifests ready for owner submission.
+
 ## Usage
 
 Create a starter manifest, inspect it, then export:

@@ -3,6 +3,11 @@
 //! The library is intentionally small: load a [`Manifest`], call [`validate`],
 //! then execute it through [`run`]. Converter commands are spawned directly;
 //! no shell parses their arguments.
+//!
+//! ```
+//! use batch_artifact_export::normalize_stem;
+//! assert_eq!(normalize_stem("Release Notes v2!"), "release-notes-v2");
+//! ```
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

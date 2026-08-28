@@ -1,0 +1,20 @@
+name: batch-artifact-export
+arch: amd64
+platform: linux
+version: __VERSION__
+section: utils
+priority: optional
+maintainer: Sociobot <hello@sociobot.in>
+description: Deterministic batch exports through local converters.
+vendor: Sociobot
+homepage: https://batch-artifact-export.sociobot.in
+license: MIT
+contents:
+  - src: target/x86_64-unknown-linux-musl/release/batch-artifact-export
+    dst: /usr/bin/batch-artifact-export
+    file_info:
+      mode: 0755
+  - src: LICENSE
+    dst: /usr/share/doc/batch-artifact-export/LICENSE
+  - src: README.md
+    dst: /usr/share/doc/batch-artifact-export/README.md

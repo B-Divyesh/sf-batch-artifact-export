@@ -1,0 +1,13 @@
+PackageIdentifier: Sociobot.BatchArtifactExport
+PackageVersion: 0.1.0
+InstallerType: zip
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/B-Divyesh/sf-batch-artifact-export/releases/download/v0.1.0/batch-artifact-export-windows-x86_64.zip
+    InstallerSha256: __WINDOWS_SHA256__
+    NestedInstallerType: portable
+    NestedInstallerFiles:
+      - RelativeFilePath: batch-artifact-export.exe
+        PortableCommandAlias: batch-artifact-export
+ManifestType: installer
+ManifestVersion: 1.9.0

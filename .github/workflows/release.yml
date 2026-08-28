@@ -1,0 +1,155 @@
+name: Release binaries
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without the v prefix"
+        required: true
+        default: "0.1.0"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  BINARY: batch-artifact-export
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            platform: linux-x86_64
+            kind: linux
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            platform: windows-x86_64
+            kind: windows
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+            platform: macos-arm64
+            kind: mac
+          - runner: macos-latest
+            target: x86_64-apple-darwin
+            platform: macos-x86_64
+            kind: mac
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Install musl toolchain
+        if: matrix.kind == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Test
+        if: matrix.kind == 'linux'
+        run: cargo test --locked
+      - name: Build release binary
+        run: cargo build --locked --release --target ${{ matrix.target }}
+      - name: Package Unix binary
+        if: matrix.kind != 'windows'
+        shell: bash
+        run: |
+          mkdir -p bundle release-assets
+          cp "target/${{ matrix.target }}/release/$BINARY" bundle/
+          cp README.md LICENSE bundle/
+          chmod 755 "bundle/$BINARY"
+          tar -czf "release-assets/$BINARY-${{ matrix.platform }}.tar.gz" -C bundle .
+      - name: Package Windows binary
+        if: matrix.kind == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force bundle, release-assets | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/$env:BINARY.exe" "bundle/$env:BINARY.exe"
+          Copy-Item README.md, LICENSE bundle/
+          Compress-Archive -Path bundle/* -DestinationPath "release-assets/$env:BINARY-${{ matrix.platform }}.zip"
+      - name: Prepare Linux package configuration
+        if: matrix.kind == 'linux'
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then version="${{ inputs.version }}"; fi
+          sed "s/__VERSION__/$version/g" packaging/nfpm.yaml > packaging/nfpm.release.yaml
+      - name: Build Debian package
+        if: matrix.kind == 'linux'
+        uses: goreleaser/nfpm-action@v2
+        with:
+          args: package --config packaging/nfpm.release.yaml --packager deb --target release-assets/
+      - name: Build RPM package
+        if: matrix.kind == 'linux'
+        uses: goreleaser/nfpm-action@v2
+        with:
+          args: package --config packaging/nfpm.release.yaml --packager rpm --target release-assets/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  macos-universal:
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-macos-*
+          path: downloads
+      - name: Assemble universal binary and installer
+        shell: bash
+        run: |
+          mkdir -p arm intel universal release-assets pkgroot/usr/local/bin
+          tar -xzf downloads/release-macos-arm64/batch-artifact-export-macos-arm64.tar.gz -C arm
+          tar -xzf downloads/release-macos-x86_64/batch-artifact-export-macos-x86_64.tar.gz -C intel
+          lipo -create arm/batch-artifact-export intel/batch-artifact-export -output universal/batch-artifact-export
+          chmod 755 universal/batch-artifact-export
+          cp README.md LICENSE universal/
+          COPYFILE_DISABLE=1 tar -czf release-assets/batch-artifact-export-macos-universal.tar.gz -C universal .
+          cp universal/batch-artifact-export pkgroot/usr/local/bin/
+          version="${GITHUB_REF_NAME#v}"
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then version="${{ inputs.version }}"; fi
+          pkgbuild --root pkgroot --identifier in.sociobot.batch-artifact-export --version "$version" --install-location / release-assets/batch-artifact-export-macos-universal.pkg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-universal
+          path: release-assets/*
+          if-no-files-found: error
+
+  publish:
+    needs: [build, macos-universal]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Generate checksums and release index
+        shell: bash
+        run: |
+          cd release-assets
+          sha256sum batch-artifact-export-* > SHA256SUMS
+          cd ..
+          version="$GITHUB_REF_NAME"
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then version="v${{ inputs.version }}"; fi
+          node scripts/release-manifest.mjs "$version" release-assets
+      - name: Verify release contents
+        shell: bash
+        run: |
+          cd release-assets
+          sha256sum --check SHA256SUMS
+          node -e 'const f=require("./latest.json"); for (const key of ["linux-x86_64","windows-x86_64","macos-universal"]) if (!f.assets[key]?.url || !f.assets[key]?.sha256) process.exit(1)'
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', inputs.version) || github.ref_name }}
+          generate_release_notes: true
+          files: release-assets/*

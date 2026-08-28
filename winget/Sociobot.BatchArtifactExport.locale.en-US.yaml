@@ -1,0 +1,17 @@
+PackageIdentifier: Sociobot.BatchArtifactExport
+PackageVersion: 0.1.0
+PackageLocale: en-US
+Publisher: Sociobot
+PublisherUrl: https://sociobot.in
+PackageName: Batch Artifact Export
+PackageUrl: https://batch-artifact-export.sociobot.in
+License: MIT
+LicenseUrl: https://github.com/B-Divyesh/sf-batch-artifact-export/blob/main/LICENSE
+ShortDescription: Deterministic batch exports through local converters.
+Description: Validate source artifacts, run declared converters without shell interpolation, normalize names, and emit one complete JSON failure report.
+Tags:
+  - cli
+  - export
+  - documents
+ManifestType: defaultLocale
+ManifestVersion: 1.9.0

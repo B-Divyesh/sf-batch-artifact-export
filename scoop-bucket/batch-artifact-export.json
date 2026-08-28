@@ -1,0 +1,19 @@
+{
+  "version": "0.1.0",
+  "description": "Deterministic batch exports through local converters",
+  "homepage": "https://batch-artifact-export.sociobot.in",
+  "license": "MIT",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/B-Divyesh/sf-batch-artifact-export/releases/download/v0.1.0/batch-artifact-export-windows-x86_64.zip",
+      "hash": "__WINDOWS_SHA256__"
+    }
+  },
+  "bin": "batch-artifact-export.exe",
+  "checkver": { "github": "https://github.com/B-Divyesh/sf-batch-artifact-export" },
+  "autoupdate": {
+    "architecture": {
+      "64bit": { "url": "https://github.com/B-Divyesh/sf-batch-artifact-export/releases/download/v$version/batch-artifact-export-windows-x86_64.zip" }
+    }
+  }
+}
