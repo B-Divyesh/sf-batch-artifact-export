@@ -79,14 +79,18 @@ jobs:
           sed "s/__VERSION__/$version/g" packaging/nfpm.yaml > packaging/nfpm.release.yaml
       - name: Build Debian package
         if: matrix.kind == 'linux'
-        uses: goreleaser/nfpm-action@v2
+        uses: burningalchemist/action-gh-nfpm@v1
         with:
-          args: package --config packaging/nfpm.release.yaml --packager deb --target release-assets/
+          config: packaging/nfpm.release.yaml
+          packager: deb
+          target: release-assets/batch-artifact-export.deb
       - name: Build RPM package
         if: matrix.kind == 'linux'
-        uses: goreleaser/nfpm-action@v2
+        uses: burningalchemist/action-gh-nfpm@v1
         with:
-          args: package --config packaging/nfpm.release.yaml --packager rpm --target release-assets/
+          config: packaging/nfpm.release.yaml
+          packager: rpm
+          target: release-assets/batch-artifact-export.rpm
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.platform }}
