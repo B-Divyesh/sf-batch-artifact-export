@@ -32,7 +32,13 @@ fi
 echo "Verified SHA-256: $actual"
 
 tar -xzf "$work_dir/$asset" -C "$work_dir"
-if [ -w /usr/local/bin ]; then install_dir=/usr/local/bin; else install_dir="${XDG_BIN_HOME:-$HOME/.local/bin}"; fi
+if [ -n "${BAE_INSTALL_DIR:-}" ]; then
+  install_dir=$BAE_INSTALL_DIR
+elif [ -w /usr/local/bin ]; then
+  install_dir=/usr/local/bin
+else
+  install_dir="${XDG_BIN_HOME:-$HOME/.local/bin}"
+fi
 mkdir -p "$install_dir"
 install -m 755 "$work_dir/batch-artifact-export" "$install_dir/batch-artifact-export"
 echo "Installed batch-artifact-export to $install_dir/batch-artifact-export"
