@@ -1,0 +1,11 @@
+{
+  "slug": "batch-artifact-export",
+  "title": "Batch Artifact Export",
+  "territory": "devtools-data",
+  "user": "Technical writers, designers, and developers who need to convert many local source artifacts into reviewable PDF/PNG/SVG outputs with the same settings every time.",
+  "smallest_useful_product": "Installable CLI that reads a manifest of local converters, validates inputs, runs deterministic batched exports, normalizes filenames, and emits one machine-readable failure report.",
+  "success_measure": "A pilot project converts 100 declared artifacts with one command and has zero unreported conversion failures in CI.",
+  "artifact_class": "cli-installers",
+  "monetization": "free",
+  "constraints": "Invoke converters safely without shell interpolation; preserve source files; clearly report external dependency licenses; sandbox untrusted files where possible."
+}
