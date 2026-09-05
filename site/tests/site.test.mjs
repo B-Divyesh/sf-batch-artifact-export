@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateManifest } from "../validator.mjs";
+import { readFile } from "node:fs/promises";
 
 const valid = `version = 1
 output_dir = "exports"
@@ -29,4 +30,10 @@ test("reports missing fields and placeholders", () => {
   assert.equal(result.state, "invalid");
   assert.ok(result.errors.some((error) => error.includes("license")));
   assert.ok(result.errors.some((error) => error.includes("{output}")));
+});
+
+test("built Azure routes are unique after trailing-slash normalization", async () => {
+  const config = JSON.parse(await readFile(new URL("../../dist/site/staticwebapp.config.json", import.meta.url), "utf8"));
+  const normalized = config.routes.map(({ route }) => route.length > 1 ? route.replace(/\/$/, "") : route);
+  assert.equal(new Set(normalized).size, normalized.length);
 });

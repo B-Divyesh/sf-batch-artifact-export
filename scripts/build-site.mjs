@@ -44,7 +44,6 @@ const revalidate = { "Cache-Control": "public, max-age=0, must-revalidate" };
 const staticWebAppConfig = {
   routes: [
     { route: "/demo", rewrite: "/index.html", headers: revalidate },
-    { route: "/demo/", rewrite: "/index.html", headers: revalidate },
     { route: "/assets/*", headers: immutable },
     { route: "/sw.js", headers: revalidate },
     { route: "/app.*", headers: immutable },
