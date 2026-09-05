@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="320" viewBox="0 0 720 320" role="img" aria-labelledby="title desc">
+  <title id="title">Sample export system map</title>
+  <desc id="desc">Three source boxes connect to a review build and then a release archive.</desc>
+  <rect width="720" height="320" fill="#f2ebd8"/>
+  <g fill="#fffdf4" stroke="#123f65" stroke-width="3">
+    <rect x="48" y="55" width="180" height="64"/>
+    <rect x="270" y="128" width="180" height="64"/>
+    <rect x="492" y="201" width="180" height="64"/>
+  </g>
+  <g stroke="#006d8f" stroke-width="3" fill="none"><path d="M228 87h70v41"/><path d="M450 160h70v41"/></g>
+  <g fill="#123f65" font-family="monospace" font-size="18" text-anchor="middle">
+    <text x="138" y="94">SOURCE FILES</text><text x="360" y="167">REVIEW BUILD</text><text x="582" y="240">RELEASE FILES</text>
+  </g>
+</svg>

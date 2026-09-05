@@ -7,12 +7,12 @@ const destination = new URL("../dist/site/", import.meta.url);
 await rm(destination, { recursive: true, force: true });
 await mkdir(destination, { recursive: true });
 
-const files = (await walk(source.pathname)).filter((file) => !file.includes("/tests/") && !file.endsWith(".png") && !file.endsWith(".json"));
-const assets = files.filter((file) => [".css", ".js", ".mjs", ".webp", ".woff2"].includes(extname(file)));
+const files = (await walk(source.pathname)).filter((file) => !file.includes("/tests/") && (!file.endsWith(".png") || file.endsWith("apple-touch-icon.png")) && !file.endsWith(".json"));
+const assets = files.filter((file) => [".css", ".js", ".mjs", ".png", ".webp", ".woff2"].includes(extname(file)));
 const replacements = new Map();
 
 // Asset references are updated before their own hash is calculated, fonts/images first.
-for (const extension of [".woff2", ".webp", ".mjs", ".js", ".css"]) {
+for (const extension of [".woff2", ".png", ".webp", ".mjs", ".js", ".css"]) {
   for (const file of assets.filter((item) => extname(item) === extension)) {
     let bytes = await readFile(file);
     if ([".css", ".js", ".mjs"].includes(extension)) bytes = Buffer.from(replaceAll(bytes.toString(), replacements));
@@ -39,7 +39,30 @@ for (const installer of ["install.sh", "install.ps1"]) await cp(new URL(`../${in
 const precache = (await walk(destination.pathname)).map((file) => `/${relative(destination.pathname, file).replaceAll("\\", "/")}`).filter((path) => !path.endsWith("sw.js"));
 const version = createHash("sha256").update(precache.join("|")).digest("hex").slice(0, 12);
 await writeFile(new URL("sw.js", destination), `const CACHE="bae-${version}";const ASSETS=${JSON.stringify(precache)};self.addEventListener("install",e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));self.addEventListener("activate",e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))));self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;e.respondWith(fetch(e.request).then(r=>{if(new URL(e.request.url).origin===location.origin){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));}return r;}).catch(()=>caches.match(e.request).then(r=>r||caches.match("/index.html"))))});\n`);
-await writeFile(new URL("_headers", destination), `/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n/*.js\n  Cache-Control: public, max-age=31536000, immutable\n/install.sh\n  Cache-Control: public, max-age=300\n/install.ps1\n  Cache-Control: public, max-age=300\n/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: no-referrer\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n  Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self' https://api.github.com https://github.com https://objects.githubusercontent.com https://release-assets.githubusercontent.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'\n`);
+const immutable = { "Cache-Control": "public, max-age=31536000, immutable" };
+const revalidate = { "Cache-Control": "public, max-age=0, must-revalidate" };
+const staticWebAppConfig = {
+  routes: [
+    { route: "/demo", rewrite: "/index.html", headers: revalidate },
+    { route: "/demo/", rewrite: "/index.html", headers: revalidate },
+    { route: "/assets/*", headers: immutable },
+    { route: "/sw.js", headers: revalidate },
+    { route: "/app.*", headers: immutable },
+    { route: "/validator.*", headers: immutable },
+    { route: "/styles.*", headers: immutable },
+    { route: "/install.sh", headers: { "Cache-Control": "public, max-age=300" } },
+    { route: "/install.ps1", headers: { "Cache-Control": "public, max-age=300" } },
+  ],
+  responseOverrides: { "404": { rewrite: "/404.html" } },
+  globalHeaders: {
+    "Cache-Control": "public, max-age=0, must-revalidate",
+    "Content-Security-Policy": "default-src 'self'; img-src 'self' data:; font-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+  },
+};
+await writeFile(new URL("staticwebapp.config.json", destination), `${JSON.stringify(staticWebAppConfig, null, 2)}\n`);
 
 async function walk(root) {
   const entries = await readdir(root, { withFileTypes: true });

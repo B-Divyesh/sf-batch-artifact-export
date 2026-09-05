@@ -2,7 +2,7 @@
 set -eu
 
 REPOSITORY="B-Divyesh/sf-batch-artifact-export"
-BASE="https://github.com/$REPOSITORY/releases/latest/download"
+BASE="${BAE_RELEASE_BASE:-https://github.com/$REPOSITORY/releases/latest/download}"
 
 case "$(uname -s)" in
   Darwin) asset="batch-artifact-export-macos-universal.tar.gz" ;;

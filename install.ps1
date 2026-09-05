@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 $Repository = "B-Divyesh/sf-batch-artifact-export"
-$Base = "https://github.com/$Repository/releases/latest/download"
+$Base = if ($env:BAE_RELEASE_BASE) { $env:BAE_RELEASE_BASE } else { "https://github.com/$Repository/releases/latest/download" }
 $Asset = "batch-artifact-export-windows-x86_64.zip"
 $Work = Join-Path ([System.IO.Path]::GetTempPath()) ("batch-artifact-export-" + [guid]::NewGuid())
 

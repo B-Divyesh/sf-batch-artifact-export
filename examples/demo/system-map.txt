@@ -1,0 +1,3 @@
+Documentation site -> review build -> release archive
+Design source -> SVG review -> approval
+App icon source -> PNG preview -> handoff

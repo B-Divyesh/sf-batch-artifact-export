@@ -1,9 +1,10 @@
 use batch_artifact_export::{
-    load_manifest, run, validate, validation_report, write_parse_failure, write_report, RunOptions,
-    SandboxMode, DEFAULT_MANIFEST,
+    load_manifest, run, validate, validation_report, write_parse_failure, write_report, Artifact,
+    Converter, Manifest, RunOptions, SandboxMode, DEFAULT_MANIFEST,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use serde::Serialize;
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -47,6 +48,8 @@ struct Cli {
 enum Commands {
     /// Write a documented starter manifest without overwriting an existing file.
     Init,
+    /// Run a bundled three-file sample in a new temporary folder.
+    Demo,
     /// Validate manifest syntax, inputs, converters, output names, and dependencies.
     Check {
         /// Print a machine-readable JSON result.
@@ -65,6 +68,9 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// Internal renderer used only by the bundled demo.
+    #[command(name = "__demo-render", hide = true)]
+    DemoRender { input: PathBuf, output: PathBuf },
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -106,12 +112,175 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     match cli.command {
         Commands::Init => init(&cli.manifest),
+        Commands::Demo => demo(),
         Commands::Check { json } => check(&cli.manifest, json),
         Commands::Run {
             jobs,
             sandbox,
             json,
         } => execute(&cli.manifest, jobs, sandbox.into(), json),
+        Commands::DemoRender { input, output } => demo_render(&input, &output),
+    }
+}
+
+fn demo() -> ExitCode {
+    let directory = match tempfile::Builder::new()
+        .prefix("batch-artifact-export-demo-")
+        .tempdir()
+    {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("error: cannot create the sample folder: {error}");
+            return ExitCode::from(2);
+        }
+    };
+    let directory = directory.keep();
+    let source_dir = directory.join("sources");
+    if let Err(error) = fs::create_dir_all(&source_dir) {
+        eprintln!("error: cannot create sample inputs: {error}");
+        return ExitCode::from(2);
+    }
+    let samples = [
+        (
+            "release-notes.md",
+            include_str!("../examples/demo/release-notes.md"),
+        ),
+        (
+            "system-map.txt",
+            include_str!("../examples/demo/system-map.txt"),
+        ),
+        (
+            "app-icon.txt",
+            include_str!("../examples/demo/app-icon.txt"),
+        ),
+    ];
+    for (name, contents) in samples {
+        if let Err(error) = fs::write(source_dir.join(name), contents) {
+            eprintln!("error: cannot write sample input {name}: {error}");
+            return ExitCode::from(2);
+        }
+    }
+    let executable = match std::env::current_exe() {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("error: cannot locate the demo renderer: {error}");
+            return ExitCode::from(2);
+        }
+    };
+    let converter = |name: &str, extension: &str| Converter {
+        name: name.into(),
+        command: executable.display().to_string(),
+        args: vec!["__demo-render".into(), "{input}".into(), "{output}".into()],
+        output_extension: extension.into(),
+        license: "MIT".into(),
+        homepage: "https://batch-artifact-export.sociobot.in".into(),
+        timeout_seconds: 30,
+        environment: BTreeMap::new(),
+    };
+    let manifest = Manifest {
+        version: 1,
+        output_dir: "review".into(),
+        report: "review/report.json".into(),
+        converters: vec![
+            converter("sample-pdf", "pdf"),
+            converter("sample-svg", "svg"),
+            converter("sample-png", "png"),
+        ],
+        artifacts: vec![
+            Artifact {
+                source: "sources/release-notes.md".into(),
+                converter: "sample-pdf".into(),
+                output: Some("release-notes.pdf".into()),
+            },
+            Artifact {
+                source: "sources/system-map.txt".into(),
+                converter: "sample-svg".into(),
+                output: Some("system-map.svg".into()),
+            },
+            Artifact {
+                source: "sources/app-icon.txt".into(),
+                converter: "sample-png".into(),
+                output: Some("app-icon.png".into()),
+            },
+        ],
+    };
+    let manifest_path = directory.join(DEFAULT_MANIFEST);
+    let manifest_text = match toml::to_string_pretty(&manifest) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("error: cannot prepare the sample manifest: {error}");
+            return ExitCode::from(2);
+        }
+    };
+    if let Err(error) = fs::write(&manifest_path, manifest_text) {
+        eprintln!("error: cannot write the sample manifest: {error}");
+        return ExitCode::from(2);
+    }
+    let loaded = match load_manifest(&manifest_path) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("error: {error}");
+            return ExitCode::from(2);
+        }
+    };
+    let report = match run(
+        &loaded,
+        &RunOptions {
+            jobs: 3,
+            sandbox: SandboxMode::Auto,
+        },
+    ) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("error: sample export failed: {error}");
+            return ExitCode::from(2);
+        }
+    };
+    let report_path = match write_report(&loaded, &report) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("error: {error}");
+            return ExitCode::from(2);
+        }
+    };
+    println!("Demo — three bundled source files; your files were not read or changed.");
+    println!(
+        "✓ {} succeeded · {} failed",
+        report.succeeded, report.failed
+    );
+    println!("Outputs:");
+    for artifact in &report.artifacts {
+        println!("  review/{}", artifact.output);
+    }
+    println!("Report: {}", report_path.display());
+    println!("Sample folder: {}", directory.display());
+    if report.failed == 0 {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::from(1)
+    }
+}
+
+fn demo_render(input: &Path, output: &Path) -> ExitCode {
+    if !input.is_file() {
+        eprintln!("error: sample input is missing");
+        return ExitCode::from(2);
+    }
+    let bytes: &[u8] = match output.extension().and_then(|value| value.to_str()) {
+        Some("pdf") => include_bytes!("../examples/demo/rendered/release-notes.pdf"),
+        Some("svg") => include_bytes!("../examples/demo/rendered/system-map.svg"),
+        Some("png") => include_bytes!("../examples/demo/rendered/app-icon.png"),
+        _ => {
+            eprintln!("error: unsupported sample output format");
+            return ExitCode::from(2);
+        }
+    };
+    match fs::write(output, bytes) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("error: cannot write sample output: {error}");
+            ExitCode::from(2)
+        }
     }
 }
 

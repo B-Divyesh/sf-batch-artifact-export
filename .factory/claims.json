@@ -1,0 +1,58 @@
+[
+  {
+    "id": "hundred-artifact-batch",
+    "claim": "Exports 100 declared artifacts in one command and reports every result.",
+    "where": "landing page proof strip and README",
+    "test": "cargo test --test cli claim_hundred_artifact_batch -- --exact",
+    "sandbox": "temporary project with 100 local inputs and a local copy converter; asserts 100 outputs, 100 report entries, and unchanged source content"
+  },
+  {
+    "id": "complete-failure-report",
+    "claim": "Reports converter exit codes and promotes only successful outputs.",
+    "where": "landing page failure report and README",
+    "test": "cargo test --test cli claim_complete_failure_report -- --exact",
+    "sandbox": "temporary project with one successful and one failing local converter job; asserts the successful output and the failed job's exit code"
+  },
+  {
+    "id": "cli-demo-sandbox",
+    "claim": "The demo command exports bundled PDF, PNG, and SVG samples without changing the current folder.",
+    "where": "landing page demo and README",
+    "test": "cargo test --test cli claim_cli_demo_sandbox -- --exact",
+    "sandbox": "empty working directory; runs the packaged demo path and validates signatures, the three-result report, preserved samples, and an untouched working directory"
+  },
+  {
+    "id": "demo-sandbox",
+    "claim": "The web demo loads and resets sample data without saving it as user data.",
+    "where": "landing page sample action and demo banner",
+    "test": "npx playwright test --grep @claim:demo-sandbox --project=desktop",
+    "sandbox": "fresh browser context with fixture release metadata; edits and resets the sample, checks output state, storage keys, and exit from demo mode"
+  },
+  {
+    "id": "manifest-local",
+    "claim": "The browser manifest check does not upload pasted text.",
+    "where": "manifest check and privacy page",
+    "test": "npx playwright test --grep @claim:manifest-local --project=desktop",
+    "sandbox": "fresh browser context records every request while checking a manifest containing a private marker"
+  },
+  {
+    "id": "verified-installer",
+    "claim": "The shell installer verifies SHA-256 before installing the executable.",
+    "where": "install section and README",
+    "test": "node --test --test-name-pattern @claim:verified-installer site/tests/installers.test.mjs",
+    "sandbox": "temporary release fixture; a correct archive installs and a changed archive is rejected"
+  },
+  {
+    "id": "release-cache-hour",
+    "claim": "The website caches public release details in local storage for one hour.",
+    "where": "privacy page",
+    "test": "npx playwright test --grep @claim:release-cache-hour --project=desktop",
+    "sandbox": "fresh browser context with counted GitHub API fixture requests; reload uses the cache and an expired entry refreshes"
+  },
+  {
+    "id": "site-privacy",
+    "claim": "The website sets no cookies and does not store sample manifest text.",
+    "where": "landing page and privacy page",
+    "test": "npx playwright test --grep @claim:site-privacy --project=desktop",
+    "sandbox": "fresh demo context records requests, cookies, and local storage during the sample flow"
+  }
+]

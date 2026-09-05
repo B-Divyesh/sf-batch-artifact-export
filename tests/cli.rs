@@ -52,7 +52,7 @@ fn invalid_run_always_writes_a_report() {
 
 #[cfg(unix)]
 #[test]
-fn exports_with_direct_arguments_and_reports_failures() {
+fn claim_complete_failure_report() {
     use std::os::unix::fs::PermissionsExt;
     let dir = tempfile::tempdir().unwrap();
     fs::write(dir.path().join("one source.md"), "alpha").unwrap();
@@ -106,7 +106,7 @@ converter = "copy"
 
 #[cfg(unix)]
 #[test]
-fn pilot_exports_one_hundred_declared_artifacts() {
+fn claim_hundred_artifact_batch() {
     use std::fmt::Write as _;
     use std::os::unix::fs::PermissionsExt;
     let dir = tempfile::tempdir().unwrap();
@@ -153,4 +153,44 @@ fn pilot_exports_one_hundred_declared_artifacts() {
         fs::read_to_string(dir.path().join("exports/source-42.pdf")).unwrap(),
         "artifact 42"
     );
+}
+
+#[test]
+fn claim_cli_demo_sandbox() {
+    let working = tempfile::tempdir().unwrap();
+    let assertion = Command::cargo_bin("batch-artifact-export")
+        .unwrap()
+        .current_dir(working.path())
+        .arg("demo")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("3 succeeded · 0 failed"));
+    assert!(fs::read_dir(working.path()).unwrap().next().is_none());
+
+    let stdout = String::from_utf8(assertion.get_output().stdout.clone()).unwrap();
+    let folder = stdout
+        .lines()
+        .find_map(|line| line.strip_prefix("Sample folder: "))
+        .map(std::path::PathBuf::from)
+        .expect("demo prints its sample folder");
+    assert_eq!(
+        fs::read(folder.join("review/release-notes.pdf")).unwrap()[..5],
+        *b"%PDF-"
+    );
+    assert!(fs::read_to_string(folder.join("review/system-map.svg"))
+        .unwrap()
+        .contains("<svg"));
+    assert_eq!(
+        fs::read(folder.join("review/app-icon.png")).unwrap()[..8],
+        *b"\x89PNG\r\n\x1a\n"
+    );
+    let report: serde_json::Value =
+        serde_json::from_slice(&fs::read(folder.join("review/report.json")).unwrap()).unwrap();
+    assert_eq!(report["succeeded"], 3);
+    assert_eq!(report["failed"], 0);
+    assert_eq!(
+        fs::read_to_string(folder.join("sources/release-notes.md")).unwrap(),
+        include_str!("../examples/demo/release-notes.md")
+    );
+    fs::remove_dir_all(folder).unwrap();
 }
