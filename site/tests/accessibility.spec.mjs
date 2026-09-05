@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 const RELEASE_API = "https://api.github.com/repos/B-Divyesh/sf-batch-artifact-export/releases/latest";
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:4173";
 const release = (tag = "v0.1.1") => ({
   tag_name: tag,
   assets: [
@@ -195,7 +196,7 @@ test("demo reloads offline after the first visit", async ({ browser }) => {
   const context = await browser.newContext({ serviceWorkers: "allow" });
   const page = await context.newPage();
   await mockRelease(page);
-  await page.goto("http://127.0.0.1:4173/demo");
+  await page.goto(`${BASE_URL}/demo`);
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect(page.getByText("Demo — sample data, nothing is saved")).toBeVisible();
   await context.setOffline(true);
@@ -212,7 +213,7 @@ test("@claim:site-privacy uses no cookies and sends sample text only to this pag
   await page.goto("/demo");
   await page.getByRole("button", { name: "Reset demo" }).click();
   expect(await page.context().cookies()).toEqual([]);
-  expect(requests.every((url) => url.startsWith("http://127.0.0.1:4173/") || url === RELEASE_API)).toBe(true);
+  expect(requests.every((url) => url.startsWith(`${BASE_URL}/`) || url === RELEASE_API)).toBe(true);
   const storage = await page.evaluate(() => Object.fromEntries(Object.entries(localStorage)));
   expect(Object.keys(storage)).toEqual(["batch-artifact-export:release:v1"]);
   expect(storage["batch-artifact-export:release:v1"]).not.toContain("architecture/system.drawio");
